@@ -309,9 +309,9 @@ void TChromosomeAlign::run_wobble ( const string &seq1 , const string &seq2 , co
 
 	if ( res1.size() + res2.size() > 10 ) return ; // Too many (number's just a whim)
 	
-	if ( res1.size() * res2.size() == 0 ) { // SNPs (one read matches perfectly but the other does not)
+	if ( res1.size() * res2.size() == 0 ) { // One read matches perfectly but the other does not
 	
-		if ( res1.size() + res2.size() == 1 ) { // Single match for one side; 
+		if ( res1.size() + res2.size() == 1 ) { // Single match for one side, none for the other
 			int the_pos , the_chr , match_pos ;
 			string out ;
 			bool rc ;
@@ -329,13 +329,45 @@ void TChromosomeAlign::run_wobble ( const string &seq1 , const string &seq2 , co
 				out = rc ? dorc ( seq1 ) : seq1 ;
 			}
 			fprintf ( wobble , "MIS\t%s\t%d\t%d\t%s\n" , (*chrs)[the_chr].name.c_str() , match_pos , the_pos , out.c_str() ) ;
+		} else if ( res1.size() == 1 || res2.size() == 1 ) {
+			pwi_vector single = res1.size() == 1 ? res1 : res2 ;
+			pwi_vector multi = res1.size() == 1 ? res2 : res1 ;
+			bool good = true ;
+			int avg_pos = 0 ;
+			int avg_cnt = 0 ;
+			for ( int a = 0 ; a < multi.size() ; a++ ) {
+				if ( single[0].chromosome != multi[a].chromosome ) {
+					good = false ;
+					break ;
+				}
+				if ( abs ( ((int)single[0].position) - ((int)multi[a].position) ) > fragment_length * 2 ) {
+					good = false ;
+					break ;
+				}
+				if ( single[0].reverse_complement == multi[a].reverse_complement ) {
+					good = false ;
+					break ;
+				}
+				avg_pos += multi[a].position ;
+				avg_cnt++ ;
+			}
+			if ( good ) {
+				int the_chr = single[0].chromosome ;
+				int match_pos = single[0].position ;
+				int the_pos = avg_pos / avg_cnt ;
+				string out = res1.size() == 1 ? seq2 : seq1 ;
+				out = multi[0].reverse_complement ? dorc ( out ) : out ;
+				fprintf ( wobble , "MUL\t%s\t%d\t%d\t%s\n" , (*chrs)[the_chr].name.c_str() , match_pos , the_pos , out.c_str() ) ;
+			}
 		}
 	
 		if ( sqlite ) sqlite_out.clear() ;
 	
 		range = fragment_range ;
-		wobble4snps ( res1 , seq2 , fragment_length , range , seq1 , false ) ;
-		wobble4snps ( res2 , seq1 , fragment_length , range , seq2 , true ) ;
+//		if ( res1.size() + res2.size() == 1 ) {
+			if ( res1.size() > 0 ) wobble4snps ( res1 , seq2 , fragment_length , range , seq1 , false ) ;
+			if ( res2.size() > 0 ) wobble4snps ( res2 , seq1 , fragment_length , range , seq2 , true ) ;
+//		}
 
 		if ( sqlite_out.size() == 1 ) {
 			sqlite_cache.push_back ( sqlite_out[0] ) ;
@@ -427,7 +459,8 @@ void TChromosomeAlign::wobble4snps ( const pwi_vector &res , const string &seq ,
 	int total_matches = 0 ;
 	
 //	string rc = dorc ( seq ) ;
-	for ( uint a = 0 ; a < res.size() && total_matches < 2 ; a++ ) {
+	int sl = seq.length() ;
+	for ( uint a = 0 ; a < res.size() ; a++ ) {
 		string *cseq = &(*chrs)[res[a].chromosome].sequence ;
 		if ( !(*chrs)[res[a].chromosome].original_sequence.empty() ) cseq = &(*chrs)[res[a].chromosome].original_sequence ;
 //		if ( !cseq->empty() ) cseq = &(*chrs)[res[a].chromosome].sequence ;
@@ -436,7 +469,7 @@ void TChromosomeAlign::wobble4snps ( const pwi_vector &res , const string &seq ,
 		if ( from < 0 ) from = 0 ;
 		to = from + range * 2 ;
 		if ( to >= cseq->length() ) to = cseq->length() - 1 ;
-		to -= seq.length() ;
+		to -= sl ;
 
 		// Add general variation range
 //		fprintf ( wobble , "VAR\t%s\t%d\t%d\n" , (*chrs)[res[a].chromosome].name.c_str() , (int) ((from+to)/2-seq.length()/2) , (int) ((from+to)/2+seq.length()/2) ) ;
@@ -445,12 +478,15 @@ void TChromosomeAlign::wobble4snps ( const pwi_vector &res , const string &seq ,
 		for ( int b = from ; b <= to ; b++ ) {
 			vector <int> pos ;
 			vector <char> o , n ;
+			pos.reserve ( wobblemax ) ;
+			o.reserve ( wobblemax ) ;
+			n.reserve ( wobblemax ) ;
 			const char *t = res[a].reverse_complement ? seq.c_str() : seq_rc.c_str() ;
 			int mismatches = 0 ;
 			const char *orig = cseq->c_str() + b ;
-			for ( c = 0 ; c < seq.length() && mismatches <= wobblemax ; c++ , t++ , orig++ ) {
+			for ( c = 0 ; c < sl ; c++ , t++ , orig++ ) {
 				if ( char2IUPAC[*t] & char2IUPAC[*orig] ) continue ;
-				mismatches++ ;
+				if ( ++mismatches > wobblemax ) break ;
 				pos.push_back ( b + c + 1 ) ;
 				o.push_back ( *orig ) ;
 				n.push_back ( *t ) ;
@@ -458,8 +494,9 @@ void TChromosomeAlign::wobble4snps ( const pwi_vector &res , const string &seq ,
 			if ( mismatches == 0 ) continue ; // Weird...
 			if ( mismatches > wobblemax ) continue ;
 			
-			total_matches++ ;
-			if ( total_matches > 1 ) break ;
+//			total_matches++ ;
+//			if ( total_matches > 1 ) break ;
+			if ( ++total_matches > 1 ) return ;
 			
 			for ( c = 0 ; c < pos.size() ; c++ ) {
 				sprintf ( dummy , "SNP\t%s\t%d\t%c\t%c\n" , (*chrs)[res[a].chromosome].name.c_str() , pos[c] , o[c] , n[c] ) ;
