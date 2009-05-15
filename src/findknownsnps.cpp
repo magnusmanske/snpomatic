@@ -17,7 +17,9 @@
  */
 
 #include "snpomatic.h"
+#include <fstream>
 
+using namespace std ;
 
 
 
@@ -238,6 +240,16 @@ int main ( int argc , char **argv ) {
 	if ( !uniqueness.empty() ) {
 		index.uniqueness ( uniqueness ) ;
 		if ( fastq_file.empty() && fasta_file.empty() ) return 0 ; // My work here is done
+	}
+	
+	if ( !fastq_file.empty() && !fastq2_file.empty() && pair_length == 0 ) { // Auto-detect read length
+		ifstream in ( fastq_file.c_str() ) ;
+		char tmp[10000] ;
+		in.getline ( tmp , 10000 ) ;
+		in.getline ( tmp , 10000 ) ;
+		in.close() ;
+		pair_length = strlen ( tmp ) ;
+		cout << "Setting read length to " << pair_length << endl ;
 	}
 	
 
