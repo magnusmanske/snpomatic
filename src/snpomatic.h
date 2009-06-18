@@ -180,7 +180,7 @@ class TChromosomeAlign {
 	
 	FILE *pileup , *binfile_no_match , *binfile_single_match , *binfile_multi_match , *snpsinreads ;
 	FILE *binfile_iupac , *cigar , *wobble , *fragmentplot , *featuretable , *gffout , *coverage ;
-	FILE *indelplot , *inversions , *sqlite , *sam , *spancontigs ;
+	FILE *indelplot , *inversions , *sqlite , *sam , *spancontigs , *faceaway ;
 	bool using_bins , multimatch , singlematch , force_one_unique_match ;
 	uint chop , wobblemax , single_read_length ;
 	

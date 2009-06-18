@@ -27,7 +27,7 @@ bool tpi_full_compare ( const TPositionWithIndex a , const TPositionWithIndex b 
 TChromosomeAlign::TChromosomeAlign ( chrvec &_chrs , TChromosomalIndices &_index ) {
 	pileup = binfile_no_match = binfile_single_match = binfile_multi_match = binfile_iupac = cigar = NULL ;
 	wobble = fragmentplot = featuretable = gffout = coverage = snpsinreads = indelplot = inversions = NULL ;
-	sqlite = sam = spancontigs = NULL ;
+	sqlite = sam = spancontigs = faceaway = NULL ;
 	chrs = &_chrs ;
 	index = &_index ;
 	chop = 0 ;
@@ -700,6 +700,17 @@ int TChromosomeAlign::paired_read_combine ( const pwi_vector &v1 , const pwi_vec
 		int position_a = p->a.reverse_complement ? p->a.position - seq1_length : p->a.position ;
 		int position_b = p->b.reverse_complement ? p->b.position - seq2_length : p->b.position ;
 		int dist = p->b.position > p->a.position ? p->b.position - p->a.position : p->a.position - p->b.position ;
+
+		if ( faceaway ) {
+			if ( p->a.reverse_complement && !p->b.reverse_complement && p->a.position < p->b.position ) {
+				fprintf ( faceaway , "%s\t%s" , last_solexa_name.c_str() , (*chrs)[p->a.chromosome].name.c_str() ) ;
+				fprintf ( faceaway , "\t%d" , position_a ) ;
+				fprintf ( faceaway , "\t%s" , p->a.reverse_complement ? dorc(seq1).c_str() : seq1.c_str() ) ;
+				fprintf ( faceaway , "\t%d" , position_b ) ;
+				fprintf ( faceaway , "\t%s" , p->b.reverse_complement ? dorc(seq2).c_str() : seq2.c_str() ) ;
+				fprintf ( faceaway , "\n" ) ;
+			}
+		}
 
 		if ( sqlite ) {
 			string s ;

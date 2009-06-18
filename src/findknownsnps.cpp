@@ -46,6 +46,7 @@ void die_with_description ( const char *msg = NULL ) {
 	cerr << "--snpsinreads=FILENAME   Outputs a list of reads containing known SNPs to a file (optional)\n" ;
 	cerr << "--indelplot=FILENAME     Outputs indel data to a file (optional)\n" ;
 	cerr << "--inversions=FILENAME    For paired reads, writes read matches indicating inversions into a file (optional)\n" ;
+	cerr << "--faceaway=FILENAME      For paired reads, writes read matches that \"face away\" from each other into a file (optional)\n" ;
 	cerr << "--sqlite=FILENAME        Creates a sqlite text file with alignment data [EXPERIMENTAL] (optional)\n" ;
 	cerr << "--sam=FILENAME           Creates a SAM alignment file (optional)\n" ;
 	cerr << "--spancontigs=FILENAME   Outputs read pairs where \"half\" reads map uniquely to different contigs (optional)\n" ;
@@ -79,7 +80,7 @@ void die_with_description ( const char *msg = NULL ) {
 int main ( int argc , char **argv ) {
 	string genome_file , gff_file , simple_snp_file , fastq_file , fastq2_file , fasta_file , pileup_file , bin_prefix , regions_file ;
 	string cigar_file , wobble_file , nono , fragmentplot , featuretable , gffout , coverage_file , uniqueness , snpsinreads ;
-	string index_file , indelplot_file , inversions_file , chromosome , sqlite , sam_file , spancontigs ;
+	string index_file , indelplot_file , inversions_file , chromosome , sqlite , sam_file , spancontigs , face_away ;
 	string binmask ( "1111" ) ;
 	uint wobblemax = 2 ;
 	uint mspi = 8 ;
@@ -108,6 +109,7 @@ int main ( int argc , char **argv ) {
 		{ "coverage" , optional_argument , 0 , 'e' } ,
 		{ "sam" , optional_argument , 0 , 'S' } ,
 		{ "gff" , optional_argument , 0 , 'f' } ,
+		{ "faceaway" , optional_argument , 0 , 'F' } ,
 		{ "pileup" , optional_argument , 0 , 'p' } ,
 		{ "bins" , optional_argument , 0 , 'b' } ,
 		{ "binmask" , optional_argument , 0 , 'z' } ,
@@ -164,6 +166,7 @@ int main ( int argc , char **argv ) {
 			case 'p' : pileup_file = optarg ; break ;
 			case 'b' : bin_prefix = optarg ; break ;
 			case 'z' : binmask = optarg ; break ;
+			case 'F' : face_away = optarg ; break ;
 			case '0' : uniqueness = optarg ; break ;
 			case 'w' : wobble_file = optarg ; break ;
 			case 'n' : nono = optarg ; break ;
@@ -265,6 +268,7 @@ int main ( int argc , char **argv ) {
 	if ( !indelplot_file.empty() ) ca.indelplot = fopen ( indelplot_file.c_str() , "w" ) ;
 	if ( !gffout.empty() ) ca.gffout = fopen ( gffout.c_str() , "w" ) ;
 	if ( !snpsinreads.empty() ) ca.snpsinreads = fopen ( snpsinreads.c_str() , "w" ) ;
+	if ( !face_away.empty() ) ca.faceaway = fopen ( face_away.c_str() , "w" ) ;
 	if ( !coverage_file.empty() ) ca.coverage = fopen ( coverage_file.c_str() , "w" ) ;
 	if ( !inversions_file.empty() ) ca.inversions = fopen ( inversions_file.c_str() , "w" ) ;
 	if ( !sqlite.empty() ) ca.sqlite = fopen ( sqlite.c_str() , "w" ) ;
