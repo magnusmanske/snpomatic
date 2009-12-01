@@ -180,7 +180,7 @@ class TChromosomeAlign {
 	
 	FILE *pileup , *binfile_no_match , *binfile_single_match , *binfile_multi_match , *snpsinreads ;
 	FILE *binfile_iupac , *cigar , *wobble , *fragmentplot , *featuretable , *gffout , *coverage ;
-	FILE *indelplot , *inversions , *sqlite , *sam , *spancontigs , *faceaway ;
+	FILE *indelplot , *inversions , *sqlite , *sam , *spancontigs , *faceaway , *rpa ;
 	bool using_bins , multimatch , singlematch , force_one_unique_match ;
 	uint chop , wobblemax , single_read_length ;
 	
@@ -197,14 +197,19 @@ class TChromosomeAlign {
 	int try_matching_read ( const string & seq , string quality ) ;
 	string get_ref_substr ( const TPositionWithIndex &p , int length ) ;
 	void add_snpsinreads ( const string &seq , const string &quality , int chr , int pos , int readpart ) ;
+	int count_snpsinreads ( const string &seq , int chr , int pos ) ;
 	void add_sam ( const string &seq , const string &quality , int chr , int pos , int readpart , int matepos , int ins_size , bool rc , bool as_pair , bool mate_rc , bool unique_match ) ;
 	void wobble_single_read ( char *seq , const string &_quality ) ;
 	string matchIUPAC_tolerant ( const char *c1 , const char *c2 , int tolerance ) ;
 	string generate_sqlite_paired_command ( int chr , string seq1 , int pos1 , string seq2 , int pos2 , char mode = ' ' , string add_keys = "" , string add_values = "" ) ;
+	void add2sqlite_cache ( string s ) ;
+	void rpa_out ( const TPositionWithIndex &a , const TPositionWithIndex &b , uint read_length_1 , const string &seq1 , const string &qual1 , const string &seq2 , const string &qual2 ) ;
 	
 	uint max_align ;
 	string last_solexa_name ;
-	vector <string> sqlite_out , sqlite_cache ;
+	vector <string> sqlite_out ;
+	FILE *sqlite_cache ;
+	string sqlite_cache_name ;
 	chrvec *chrs ;
 	TChromosomalIndices *index ;
 	bool fasta , use_nono , sam_wrote ;
@@ -214,7 +219,9 @@ class TChromosomeAlign {
 	vector <int> fragment_stats ;
 	bool snpsinreads_first ;
 	bool sqlite_prefix_first ;
+	bool rpa_header_written ;
 	string sqlite_prefix ;
+	string rgid ;
 } ;
 
 class prc_cache {

@@ -72,6 +72,7 @@ void die_with_description ( const char *msg = NULL ) {
 	cerr << "--singlematch            Only performs additional output functions for single matches (optional) [currently paired reads only]\n" ;
 	cerr << "--foum                   For paired reads, at least one read has to match uniquely in the genome (force one unique match) (optional)\n" ;
 	cerr << "--mismatch               The number of mismatches allowed outside the index (index1+index2) (optional)\n" ;
+	cerr << "--rpa=FILENAME           Writes all read pair alignments into a file (optional)\n" ;
 //	cerr << "--featuretable=OUTPUT_FILE\tOutputs a DDBJ/EMBL/GenBank feature table for matched reads (optional; paired reads only for now)\n" ;
 	exit ( 0 ) ;
 }
@@ -80,7 +81,7 @@ void die_with_description ( const char *msg = NULL ) {
 int main ( int argc , char **argv ) {
 	string genome_file , gff_file , simple_snp_file , fastq_file , fastq2_file , fasta_file , pileup_file , bin_prefix , regions_file ;
 	string cigar_file , wobble_file , nono , fragmentplot , featuretable , gffout , coverage_file , uniqueness , snpsinreads ;
-	string index_file , indelplot_file , inversions_file , chromosome , sqlite , sam_file , spancontigs , face_away ;
+	string index_file , indelplot_file , inversions_file , chromosome , sqlite , sam_file , spancontigs , face_away , rpa ;
 	string binmask ( "1111" ) ;
 	uint wobblemax = 2 ;
 	uint mspi = 8 ;
@@ -109,6 +110,7 @@ int main ( int argc , char **argv ) {
 		{ "coverage" , optional_argument , 0 , 'e' } ,
 		{ "sam" , optional_argument , 0 , 'S' } ,
 		{ "gff" , optional_argument , 0 , 'f' } ,
+		{ "rpa" , optional_argument , 0 , 'R' } ,
 		{ "faceaway" , optional_argument , 0 , 'F' } ,
 		{ "pileup" , optional_argument , 0 , 'p' } ,
 		{ "bins" , optional_argument , 0 , 'b' } ,
@@ -194,6 +196,7 @@ int main ( int argc , char **argv ) {
 			case 'c' : cigar_file = optarg ; break ;
 			case 'r' : regions_file = optarg ; break ;
 			case 'P' : sqlite = optarg ; break ;
+			case 'R' : rpa = optarg ; break ;
 			default : die_with_description("Unknown option") ;
 		}
 	}
@@ -274,6 +277,7 @@ int main ( int argc , char **argv ) {
 	if ( !sqlite.empty() ) ca.sqlite = fopen ( sqlite.c_str() , "w" ) ;
 	if ( !sam_file.empty() ) ca.sam = fopen ( sam_file.c_str() , "w" ) ;
 	if ( !spancontigs.empty() ) ca.spancontigs = fopen ( spancontigs.c_str() , "w" ) ;
+	if ( !rpa.empty() ) ca.rpa = fopen ( rpa.c_str() , "w" ) ;
 	if ( !featuretable.empty() ) {
 		ca.featuretable = fopen ( featuretable.c_str() , "w" ) ;
 		fprintf ( ca.featuretable , "Key\tLocation/Qualifiers\n" ) ;

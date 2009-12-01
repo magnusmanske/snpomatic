@@ -27,7 +27,7 @@ bool tpi_full_compare ( const TPositionWithIndex a , const TPositionWithIndex b 
 TChromosomeAlign::TChromosomeAlign ( chrvec &_chrs , TChromosomalIndices &_index ) {
 	pileup = binfile_no_match = binfile_single_match = binfile_multi_match = binfile_iupac = cigar = NULL ;
 	wobble = fragmentplot = featuretable = gffout = coverage = snpsinreads = indelplot = inversions = NULL ;
-	sqlite = sam = spancontigs = faceaway = NULL ;
+	sqlite = sam = spancontigs = faceaway = rpa = NULL ;
 	chrs = &_chrs ;
 	index = &_index ;
 	chop = 0 ;
@@ -41,6 +41,7 @@ TChromosomeAlign::TChromosomeAlign ( chrvec &_chrs , TChromosomalIndices &_index
 	singlematch = false ;
 	force_one_unique_match = false ;
 	sqlite_prefix_first = true ;
+	rpa_header_written = false ;
 	single_read_length = 0 ;
 }
 
@@ -142,12 +143,15 @@ uint TChromosomeAlign::align_solexa_paired_read ( const string &name , const str
 	int ret = 0 , old_fragment , old_variance ;
 
 	// Spanning contigs
-	if ( spancontigs && res1.size() == 1 && res2.size() == 1 && res1[0].chromosome != res2[0].chromosome ) {
-		fprintf ( spancontigs , "%s\t%s\t%d\t%d\t%s\t%s\t%s\t%d\t%d\t%s\t%s\n" , 
-			last_solexa_name.c_str() ,
-			(*chrs)[res1[0].chromosome].name.c_str() , res1[0].position , res1[0].reverse_complement , seq1.c_str() , qual1.c_str() ,
-			(*chrs)[res2[0].chromosome].name.c_str() , res2[0].position , res2[0].reverse_complement , seq2.c_str() , qual2.c_str()
-			) ;
+	if ( ( rpa || spancontigs ) && res1.size() == 1 && res2.size() == 1 && res1[0].chromosome != res2[0].chromosome ) {
+		if ( spancontigs ) {
+			fprintf ( spancontigs , "%s\t%s\t%d\t%d\t%s\t%s\t%s\t%d\t%d\t%s\t%s\n" , 
+				last_solexa_name.c_str() ,
+				(*chrs)[res1[0].chromosome].name.c_str() , res1[0].position , res1[0].reverse_complement , seq1.c_str() , qual1.c_str() ,
+				(*chrs)[res2[0].chromosome].name.c_str() , res2[0].position , res2[0].reverse_complement , seq2.c_str() , qual2.c_str()
+				) ;
+		}
+		if ( rpa ) rpa_out ( res1[0] , res2[0] , read_length_1 , seq1 , qual1 , seq2 , qual2 ) ;
 		return 0 ;
 	}
 	
@@ -157,7 +161,7 @@ uint TChromosomeAlign::align_solexa_paired_read ( const string &name , const str
 		if ( sqlite ) {
 			if ( r.reverse_complement ) s = generate_sqlite_paired_command ( r.chromosome , dorc ( seq ) , r.position - seq.length() , "" , 0 , '1' ) ;
 			else s = generate_sqlite_paired_command ( r.chromosome , seq , r.position , "" , 0 , '1' ) ;
-			sqlite_cache.push_back ( s ) ;
+			add2sqlite_cache ( s ) ;
 		}
 		if ( sam ) {
 			string qual = res1.size() ? qual1 : qual2 , s ;
@@ -177,7 +181,7 @@ uint TChromosomeAlign::align_solexa_paired_read ( const string &name , const str
 	ret += paired_read_combine ( res2 , res1 , fragment_length , range , read_length_1 , seq2 , qual2 , seq1 , qual1 ) ;
 	
 	if ( sqlite && sqlite_out.size() == 1 ) {
-		sqlite_cache.push_back ( sqlite_out[0] ) ;
+		add2sqlite_cache ( sqlite_out[0] ) ;
 		return ret ;
 	}
 	
@@ -192,7 +196,7 @@ uint TChromosomeAlign::align_solexa_paired_read ( const string &name , const str
 		paired_read_combine ( res1 , res2 , fragment_length , range , read_length_1 , seq1 , qual1 , seq2 , qual2 ) ;
 		paired_read_combine ( res2 , res1 , fragment_length , range , read_length_1 , seq2 , qual2 , seq1 , qual1 ) ;
 		if ( sqlite_out.size() == 1 ) {
-			sqlite_cache.push_back ( sqlite_out[0] ) ;
+			add2sqlite_cache ( sqlite_out[0] ) ;
 			done = true ;
 		}
 
@@ -202,7 +206,7 @@ uint TChromosomeAlign::align_solexa_paired_read ( const string &name , const str
 	}
 
 	// Try inversions
-	if ( ret == 0 && ( inversions || sqlite || ( sam && !sam_wrote ) ) ) {
+	if ( ret == 0 && ( rpa || inversions || sqlite || ( sam && !sam_wrote ) ) ) {
 		bool fake_long_region = true ; // sqlite ;
 
 		if ( fake_long_region ) {
@@ -221,7 +225,7 @@ uint TChromosomeAlign::align_solexa_paired_read ( const string &name , const str
 		}
 
 		if ( sqlite_out.size() == 1 ) {
-			sqlite_cache.push_back ( sqlite_out[0] ) ;
+			add2sqlite_cache ( sqlite_out[0] ) ;
 			return 0 ;
 		}
 	}
@@ -370,7 +374,7 @@ void TChromosomeAlign::run_wobble ( const string &seq1 , const string &seq2 , co
 //		}
 
 		if ( sqlite_out.size() == 1 ) {
-			sqlite_cache.push_back ( sqlite_out[0] ) ;
+			add2sqlite_cache ( sqlite_out[0] ) ;
 		}
 
 		return ;
@@ -711,6 +715,10 @@ int TChromosomeAlign::paired_read_combine ( const pwi_vector &v1 , const pwi_vec
 				fprintf ( faceaway , "\n" ) ;
 			}
 		}
+		
+		if ( rpa ) {
+			rpa_out ( p->a , p->b , read_length_1 , seq1 , qual1 , seq2 , qual2 ) ;
+		}
 
 		if ( sqlite ) {
 			string s ;
@@ -761,6 +769,26 @@ int TChromosomeAlign::paired_read_combine ( const pwi_vector &v1 , const pwi_vec
 	return ret ;
 }
 
+void TChromosomeAlign::rpa_out ( const TPositionWithIndex &a , const TPositionWithIndex &b , uint read_length_1 , const string &seq1 , const string &qual1 , const string &seq2 , const string &qual2 ) {
+	if ( !rpa_header_written ) {
+		fprintf ( rpa , "#Readname\tr1_seq\tr1_qual\tr1_chr\tr1_pos\tr1_rc\tr2_seq\tr2_qual\tr2_chr\tr2_pos\tr2_rc\n" ) ;
+		rpa_header_written = true ;
+	}
+	fprintf ( rpa , "%s\t%s\t%s\t%s\t%d\t%d\t%s\t%s\t%s\t%d\t%d\n" ,
+		last_solexa_name.c_str() ,
+		seq1.c_str() ,
+		qual1.c_str() ,
+		(*chrs)[a.chromosome].name.c_str() ,
+		a.position ,
+		a.reverse_complement ? 1 : 0 ,
+		seq2.c_str() ,
+		qual2.c_str() ,
+		(*chrs)[b.chromosome].name.c_str() ,
+		b.position ,
+		b.reverse_complement ? 1 : 0
+	) ;
+}
+
 void TChromosomeAlign::add_sam ( const string &seq , const string &quality , int chr , int pos , int readpart , int matepos , int ins_size , bool rc , bool as_pair , bool mate_rc , bool unique_match ) {
 	char cigar[100] ;
 	sprintf ( cigar , "%dM" , (int) seq.length() ) ;
@@ -775,9 +803,15 @@ void TChromosomeAlign::add_sam ( const string &seq , const string &quality , int
 		if ( 1 == readpart ) flag |= 0x0040 ; // First read in a pair
 		if ( 2 == readpart ) flag |= 0x0080 ; // Second read in a pair
 	}
-	if ( !unique_match ) flag |= 0x0100 ; // Second read in a pair
+	if ( !unique_match ) flag |= 0x0100 ; // Not uniquely mapped
 	
+	char mismatches[1000] ;
+	sprintf ( mismatches , "\tNM:i:%d" , count_snpsinreads ( seq , chr , pos ) ) ;
 	string tags ; // FILL ME
+//	tags += "\tRG:Z:" + rgid ;
+//	tags += "\tPU:Z:" + rgid ;
+	tags += "\tPG:Z:SNP-o-matic" ;
+	tags += mismatches ;
 	
 	if ( pos > matepos ) ins_size = -ins_size ;
 	
@@ -795,6 +829,21 @@ void TChromosomeAlign::add_sam ( const string &seq , const string &quality , int
 				quality.c_str() , // Quality
 				tags.c_str() // Tag
 				) ;
+}
+
+int TChromosomeAlign::count_snpsinreads ( const string &seq , int chr , int pos ) {
+	uint sl = (*chrs)[chr].original_sequence.length() ;
+	if ( sl == 0 ) return 0 ; // No SNPs here
+	
+	int ret = 0 ;
+	int seql = seq.length() , n , cnt ;
+	const char *os = (*chrs)[chr].original_sequence.c_str() ;
+	const char *ss = (*chrs)[chr].sequence.c_str() ;
+	for ( int p = 0 ; p < seql && p + pos < sl ; p++ ) {
+		if ( !isIUPAC[ss[p+pos]] || os[p+pos] == 'X' ) continue ;
+		if ( seq[p] != os[p+pos] ) ret++ ;
+	}
+	return ret ;
 }
 
 void TChromosomeAlign::add_snpsinreads ( const string &seq , const string &quality , int chr , int pos , int readpart ) {
@@ -865,6 +914,19 @@ void TChromosomeAlign::add_snpsinreads ( const string &seq , const string &quali
 	}
 }
 
+void TChromosomeAlign::add2sqlite_cache ( string s ) {
+	if ( sqlite_cache_name.empty() ) {
+		char *c = new char[10000] ;
+		strcpy ( c , "sqlite_cache_XXXXXXXX" ) ;
+		close ( mkstemp ( c ) ) ;
+		//tmpnam ( c ) ;
+		sqlite_cache_name = c ;
+		sqlite_cache = fopen ( c , "w" ) ;
+		delete c ;
+	}
+	fprintf ( sqlite_cache , "%s\n" , s.c_str() ) ;
+}
+
 void TChromosomeAlign::finish_sqlite ( int fragment , int variance , int read_length ) {
 	if ( !sqlite ) return ;
 	int a , b ;
@@ -889,12 +951,22 @@ void TChromosomeAlign::finish_sqlite ( int fragment , int variance , int read_le
 	}
 	
 	// Write contents
-	if ( DEBUGGING ) { fprintf ( stdout , "Sorting sqlite output ... " ) ; fflush(stdout); }
-	sort ( sqlite_cache.begin() , sqlite_cache.end() ) ;
-	if ( DEBUGGING ) { fprintf ( stdout , "writing ... " ) ; fflush(stdout); }
+//	if ( DEBUGGING ) { fprintf ( stdout , "Sorting sqlite output ... " ) ; fflush(stdout); }
+//	sort ( sqlite_cache.begin() , sqlite_cache.end() ) ;
+//	if ( DEBUGGING ) { fprintf ( stdout , "writing ... " ) ; fflush(stdout); }
+
+	fclose ( sqlite_cache ) ;
+	sqlite_cache = fopen ( sqlite_cache_name.c_str() , "r" ) ;
+	char dummy[READ_CHAR_BUFFER] , *c1 , *c2 ;
+
 	string pref = "\"" + sqlite_prefix ;
-	for ( a = 0 ; a < sqlite_cache.size() ; a++ ) {
-		string s = sqlite_cache[a] ;
+//	for ( a = 0 ; a < sqlite_cache.size() ; a++ ) {
+//		string s = sqlite_cache[a] ;
+	while ( !feof ( sqlite_cache ) ) {
+		fgets ( dummy , READ_CHAR_BUFFER , sqlite_cache ) ;
+		for ( c1 = dummy ; *c1 > 13 ; c1++ ) ;
+		*c1 = 0 ;
+		string s ( dummy ) ;
 		if ( s.empty() ) continue ;
 		
 		// Removing initial SQL comment to save disk space; we could leave it in, and sqlite would ignore it
@@ -928,6 +1000,8 @@ void TChromosomeAlign::finish_sqlite ( int fragment , int variance , int read_le
 	
 	// Close up
 	fprintf ( sqlite , "COMMIT;\n" ) ;
+	fclose ( sqlite_cache ) ;
+	remove ( sqlite_cache_name.c_str() ) ;
 	if ( DEBUGGING ) { fprintf ( stdout , "done.\n" ) ; fflush(stdout); }
 }
 
@@ -949,6 +1023,25 @@ void TChromosomeAlign::align_solexa_paired ( string filename , string filename2 
 		}
 	}
 
+	if ( sam ) {
+		for ( int a = 0 ; a < filename.length() ; a++ ) {
+			if ( filename[a] == '/' ) rgid.clear() ;
+			else rgid += filename[a] ;
+		}
+		
+		char predicted_insert_size[100] ;
+		sprintf ( predicted_insert_size , "\tPI:%d" , fragment_length - read_length_1 * 2 ) ;
+		
+/*		string rg ( "@RG" ) ;
+		rg += "\tID:" + rgid ;
+		rg += "\tPU:" + rgid ;
+		rg += predicted_insert_size ;
+		rg += "\tPL:SOLEXA" ;
+		fprintf ( sam , "%s\n" , rg.c_str() ) ;
+*/
+		string pg ( "@PG\tID:SNP-o-matic" ) ;
+		fprintf ( sam , "%s\n" , pg.c_str() ) ;
+	}
 
 	char dummy[READ_CHAR_BUFFER] , *c1 , *c2 ;
 	string lastseq , lastqual ;
@@ -1358,7 +1451,7 @@ int TChromosomeAlign::align_solexa_read ( char *_seq , const string &_quality , 
 	
 	if ( wobble && ret == 0 ) wobble_single_read ( _seq , _quality ) ;
 
-	if ( sqlite && sqlite_out.size() == 1 ) sqlite_cache.push_back ( sqlite_out[0] ) ;
+	if ( sqlite && sqlite_out.size() == 1 ) add2sqlite_cache ( sqlite_out[0] ) ;
 
 	return ret ;
 }
