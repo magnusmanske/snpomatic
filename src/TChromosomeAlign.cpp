@@ -1052,6 +1052,8 @@ void TChromosomeAlign::align_solexa_paired ( string filename , string filename2 
 	if ( range == 0 ) range = fragment_length / 4 ;
 	fragment_range = range ;
 	
+	int linecounter = 0 ;
+	
 	while ( !eof || lastone ) {
 //		if ( readcount > 10000 ) break ; // TESTING
 		if ( lastone ) {
@@ -1069,8 +1071,8 @@ void TChromosomeAlign::align_solexa_paired ( string filename , string filename2 
 		// Remove EOL
 		for ( c1 = dummy ; *c1 > 13 ; c1++ ) ;
 		*c1 = 0 ;
-		
-		if ( ( fasta && *dummy == '>' ) || *dummy == '@' ) {
+	
+		if ( linecounter == 0 && ( ( fasta && *dummy == '>' ) || *dummy == '@' ) ) {
 			if ( *dummy == '@' ) fasta = false ;
 			
 			if ( !skip ) {
@@ -1120,6 +1122,9 @@ void TChromosomeAlign::align_solexa_paired ( string filename , string filename2 
 		} else {
 			lastseq += dummy ;
 		}
+		
+		linecounter++ ;
+		linecounter %= 4 ;
 		
 		eof = feof ( file ) ;
 		if ( eof ) lastone = true ; // Fake last read
