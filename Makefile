@@ -1,12 +1,12 @@
 # Use g++
-#CXX=g++
-#CXXFLAGS=-g -O3
-#LIBS=-lm
+CXX=g++
+CXXFLAGS=-g -O3
+LIBS=-lm
 
 # Use Intel compiler (faster!)
-CXX=icpc
-CXXFLAGS=-g -O2 -ip -align -falign-functions -Wno-deprecated -Isrc
-LIBS=
+#CXX=icpc
+#CXXFLAGS=-g -O2 -ip -align -falign-functions -Wno-deprecated -Isrc
+#LIBS=
 
 
 
