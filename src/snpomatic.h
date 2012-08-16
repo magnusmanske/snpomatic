@@ -17,6 +17,10 @@
 
 using namespace std ;
 
+#ifdef __APPLE__
+#define ulong unsigned long
+#endif
+
 // __________________________________________________________________________________________________________________________________________________________________ DEFINES
 
 // DEBUGGING: set to 1 to get status information over STDOUT

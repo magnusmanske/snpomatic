@@ -653,7 +653,7 @@ int TChromosomeAlign::paired_read_combine ( const pwi_vector &v1 , const pwi_vec
 			ca.a = v1[a] ;
 			ca.b = v2[c] ;
 			cache.push_back ( ca ) ;
-
+			
 			if ( gffout ) {
 				fprintf ( gffout , "\"%s\"\t\"SNP-O-MATIC\"\t\"misc_feature\"\t%d\t%d\t\"-\"\t\"%c\"\t\"-\"\t\"ID=%s_a;Gap=M%d\"\n" , 
 															(*chrs)[v1[a].chromosome].name.c_str() , 
@@ -715,6 +715,12 @@ int TChromosomeAlign::paired_read_combine ( const pwi_vector &v1 , const pwi_vec
 				fprintf ( faceaway , "\n" ) ;
 			}
 		}
+
+		if ( cigar ) {
+			add_cigar_sqlite ( seq1 , last_solexa_name , position_a , p->a.chromosome , p->a.reverse_complement ? '-' : '+' ) ;
+			add_cigar_sqlite ( seq2 , last_solexa_name , position_b , p->b.chromosome , p->b.reverse_complement ? '-' : '+' ) ;
+		}
+
 		
 		if ( rpa ) {
 			rpa_out ( p->a , p->b , read_length_1 , seq1 , qual1 , seq2 , qual2 ) ;
@@ -1527,7 +1533,7 @@ void TChromosomeAlign::wobble_single_read ( char *seq , const string &_quality )
 void TChromosomeAlign::add_cigar_sqlite ( const string &sequence , const string &name , uint position , uint chromosome , char orientation ) {
 	char cig[READ_CHAR_BUFFER] ;
 	string cigar_text ;
-	
+
 	int a ;
 	bool iu = false ;
 	for ( a = 0 ; a < sequence.length() && !iu ; a++ ) {
