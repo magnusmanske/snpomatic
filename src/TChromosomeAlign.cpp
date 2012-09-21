@@ -1069,7 +1069,9 @@ void TChromosomeAlign::align_solexa_paired ( string filename , string filename2 
 			*dummy = 0 ;
 			fgets ( dummy , READ_CHAR_BUFFER , file ) ;
 			if ( file2 ) {
-				for ( c1 = dummy ; *c1 > 13 ; c1++ ) ;
+				int len = 0 ;
+				for ( c1 = dummy ; *c1 > 13 ; c1++ , len++ ) ;
+				if ( linecounter == 1 ) read_length_1 = len ;
 				fgets ( c1 , READ_CHAR_BUFFER , file2 ) ;
 			}
 		}

@@ -32,6 +32,7 @@ void die_with_description ( const char *msg = NULL ) {
 	cerr << "--genome=GENOME_FILE     FASTA file with chromosomes (mandatory)\n" ;
 	cerr << "--fasta=FASTA_FILE       FASTA file with Solexa reads (mandatory, except when --fastq or --index is used)\n" ;
 	cerr << "--fastq=FASTQ_FILE       FASTQ file with Solexa reads (mandatory, except when --fasta or --index is used)\n" ;
+	cerr << "--fastq2=FASTQ_FILE2     FASTQ file with Solexa reads (optional; read mate)\n" ;
 	cerr << "--nono=FILENAME          File with list of read names (!) to ignore (optional)\n" ;
 	cerr << "--regions=REGION_FILE    Region file for finding new SNPs (optional) [DEPRECATED]\n" ;
 	cerr << "--snps=SNP_FILE          Simple SNP file (optional)\n" ;

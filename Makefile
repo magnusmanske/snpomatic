@@ -5,7 +5,7 @@ LIBS=-lm
 
 # Use Intel compiler (faster!)
 #CXX=icpc
-#CXXFLAGS=-g -O2 -ip -align -falign-functions -Wno-deprecated -Isrc
+#CXXFLAGS=-g -O2 -ip -align -falign-functions -Wno-deprecated -Isrc -w
 #LIBS=
 
 
