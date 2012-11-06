@@ -6,11 +6,11 @@ void TAlignmentOutput::init ( TChromosome *_chr ) {
 	chr = _chr ;
 	align_full.assign ( chr->sequence.length() , false ) ;
 	
-	uint size = MAXLINES * chr->sequence.length() ;
-	align = new char[size] ;
-	qalign = new char[size] ;
+	align_size = MAXLINES * chr->sequence.length() ;
+	align = new char[align_size] ;
+	qalign = new char[align_size] ;
 	
-	for ( uint i = 0 ; i < size ; i++ ) align[i] = qalign[i] = ' ' ;
+	for ( uint i = 0 ; i < align_size ; i++ ) align[i] = qalign[i] = ' ' ;
 }
 
 void TAlignmentOutput::add_align ( const string &seq , const string &quality , uint pos , int chromosome ) {
@@ -27,6 +27,7 @@ void TAlignmentOutput::add_align ( const string &seq , const string &quality , u
 	
 	for ( int i = 0 ; i < seql ; i++ ) {
 		uint p = twotoone(lane,pos+i) ;
+		if ( p >= align_size ) continue ;
 		align[p] = seq[i] ;
 		qalign[p] = quality[i] ;
 	}

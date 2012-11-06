@@ -108,6 +108,9 @@ class TAlignmentOutput {
 	void show_pileup ( FILE *pileup , bool snps_only ) ; ///< Outputs the alignment to the given file.
 	void add_align ( const string &seq , const string &quality , uint pos , int chromosome ) ;
 	TChromosome *chr ; ///< Pointer back to the chromosome.
+	
+	protected:
+	uint align_size ;
 } ;
 
 /// Stores secondary index, position, chromosome, and reverse/complement information. Heavily used by TChromosomalIndices.
