@@ -1,1 +1,0 @@
-SNP-o-matic is a fast, stringent short-read mapping software. It supports a multitude of output types and formats, for uses in filtering reads, alignments, sequence-based genotyping calls, assisted reassembly of contigs etc.
